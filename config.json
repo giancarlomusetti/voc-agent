@@ -8,7 +8,8 @@
     "analytics_events_file": "./data/analytics-events.csv"
   },
   "thresholds": {
-    "issue_filing_min_mentions": 3
+    "issue_filing_min_mentions": 3,
+    "confidence_threshold": 5
   },
   "github": {
     "repo": "giancarlomusetti/voc-agent",
