@@ -2,11 +2,13 @@
   "name": "voc-agent",
   "version": "1.0.0",
   "description": "Voice of Customer agent — aggregates reviews, Reddit, support, and analytics via MCP servers, synthesizes themes with Claude, and files GitHub Issues.",
-  "main": "dist/agent.js",
+  "main": "dist/coordinator.js",
   "scripts": {
     "build": "tsc",
-    "agent": "npm run build && node dist/agent.js",
-    "dev": "ts-node src/agent.ts"
+    "agent": "npm run build && node dist/coordinator.js",
+    "agent:legacy": "npm run build && node dist/agent.js",
+    "dev": "ts-node src/coordinator.ts",
+    "dev:legacy": "ts-node src/agent.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",

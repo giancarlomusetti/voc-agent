@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run build        # Compile TypeScript → dist/
-npm run agent        # Build + run the full agent (requires .env)
-npm run dev          # Run with ts-node, no build step (slower startup)
+npm run agent        # Build + run the coordinator (multi-agent, default)
+npm run agent:legacy # Build + run the single-agent fallback (src/agent.ts)
+npm run dev          # Run coordinator with ts-node, no build step
 npx tsc --noEmit     # Type-check only, no output
 ```
 
@@ -15,28 +16,39 @@ The agent requires `ANTHROPIC_API_KEY` and `GITHUB_TOKEN` in `.env`. Copy `.env.
 
 ## Architecture
 
-The agent orchestrates **5 MCP servers** in parallel. Four are custom stdio servers built in this repo; one is the official GitHub MCP server pulled via `npx`.
+Hub-and-spoke multi-agent system. The coordinator starts all 5 MCP servers, then spawns 6 Claude subagents — 4 in parallel for data collection, then synthesis, then reporting.
 
 ```
-agent.ts
-  ├── starts reviews-server   (dist/mcp-servers/reviews/index.js)
-  ├── starts reddit-server    (dist/mcp-servers/reddit/index.js)
-  ├── starts support-server   (dist/mcp-servers/support/index.js)
-  ├── starts analytics-server (dist/mcp-servers/analytics/index.js)
-  └── spawns GitHub MCP       (npx @modelcontextprotocol/server-github)
+coordinator.ts
+  ├── starts 5 MCP servers (reviews, reddit, support, analytics, github)
+  │
+  ├── [PARALLEL via Promise.all()]
+  │   ├── ReviewsSubagent    — tools: get_trustpilot_reviews, get_app_store_reviews
+  │   ├── RedditSubagent     — tools: get_reddit_mentions
+  │   ├── SupportSubagent    — tools: get_support_tickets
+  │   └── AnalyticsSubagent  — tools: get_analytics_events
+  │
+  ├── SynthesisSubagent      — NO tools; receives SubagentFindings[] explicitly
+  └── ReporterSubagent       — tools: GitHub MCP only
 ```
 
-Each custom server is a standalone Node process connected via `StdioClientTransport`. `agent.ts` starts them all as child processes, calls `listTools()` on each, merges the results into a single flat `allTools` array (with a `serverName` field for routing), then passes them to Claude as `Anthropic.Tool[]`.
+Each MCP server is a standalone Node process connected via `StdioClientTransport`. Shared MCP utilities (startMcpServer, listTools, callTool) live in `src/lib/mcp.ts`.
 
-**Agentic loop** (`src/agent.ts`): Standard tool-use loop — append assistant message to `messages[]`, handle all `tool_use` blocks by dispatching to the correct MCP client via `serverName`, append tool results, repeat until `stop_reason === "end_turn"`. Capped at 30 iterations.
+**Tool scoping**: Each subagent receives only the tools for its role — data collectors cannot file GitHub Issues; the reporter cannot read data sources. Enforced by passing filtered `McpTool[]` subsets to each subagent.
 
-**Adding a new data source**: Create a new file at `src/mcp-servers/<name>/index.ts`, follow the pattern of any existing server (Server → ListTools handler → CallTool handler → `main()` with StdioServerTransport), then add it to the `clients` map in `agent.ts` and include its tools in `allTools`.
+**Context passing**: Data collectors return `SubagentFindings` JSON. The coordinator injects all 4 findings directly into the synthesizer's user message. The synthesizer has no access to the data collectors' conversation history.
+
+**Agentic loop** (same pattern in `data-collector.ts` and `reporter.ts`): append assistant message → handle `tool_use` blocks → append tool results → repeat until `stop_reason === "end_turn"`. Synthesizer uses a single non-agentic call (no tools needed).
+
+**Adding a new data source**: Create `src/mcp-servers/<name>/index.ts` (follow existing server pattern), add to `clients` map in `coordinator.ts`, create a `DataCollectorConfig` entry in `buildCollectorConfigs()`, add its tools to the relevant `Promise.all()` call.
 
 ## Key Files
 
-- `config.json` — the only file a fork needs to change: target company slugs, subreddit names, CSV paths, GitHub repo, and the mention threshold for filing issues
+- `config.json` — the only file a fork needs to change: target company slugs, subreddit names, CSV paths, GitHub repo, and thresholds (`issue_filing_min_mentions`, `confidence_threshold`)
+- `src/types.ts` — `StructuredError` (MCP server errors), `SubagentFindings` (data collector output)
 - `data/*.csv` — mock support tickets and analytics events; designed so login failures appear across all 4 sources to demonstrate cross-source synthesis
-- `src/mcp-servers/reviews/index.ts` — tries the real Trustpilot API first, silently falls back to mock data if the key is absent or the request fails; same pattern applies to App Store RSS and Reddit
+- `src/mcp-servers/reviews/index.ts` — tries the real Trustpilot API first, returns structured error + mock data as `partialResults` on failure; same pattern for App Store and Reddit
+- `src/agent.ts` — legacy single-agent implementation kept for reference; run via `npm run agent:legacy`
 
 ## TypeScript Notes
 
