@@ -20,20 +20,28 @@ Built to demonstrate multi-MCP agent architecture. Fork it, point it at your pro
 ```
 voc-agent/
 ├── src/
-│   ├── agent.ts                        # Main Claude agentic loop
+│   ├── coordinator.ts              # Entry point — hub-and-spoke orchestrator
+│   ├── lib/
+│   │   └── mcp.ts                  # Shared MCP utilities (startMcpServer, callTool)
+│   ├── subagents/
+│   │   ├── data-collector.ts       # Generic agentic loop for one data source
+│   │   ├── synthesizer.ts          # Cross-source theme synthesis (no tools)
+│   │   └── reporter.ts             # GitHub Issue filing + report commit
 │   └── mcp-servers/
-│       ├── reviews/index.ts            # Trustpilot + App Store public APIs
-│       ├── reddit/index.ts             # Reddit public API
-│       ├── support/index.ts            # Support tickets from CSV
-│       └── analytics/index.ts         # Analytics events from CSV
+│       ├── reviews/index.ts        # Trustpilot + App Store public APIs
+│       ├── reddit/index.ts         # Reddit public API
+│       ├── support/index.ts        # Support tickets from CSV
+│       └── analytics/index.ts     # Analytics events from CSV
 ├── data/
 │   ├── support-tickets.csv             # Mock or real support data
 │   └── analytics-events.csv           # Mock or real analytics data
+├── .github/workflows/
+│   └── daily-voc.yml               # Runs every day at 8am UTC
 ├── reports/                            # Daily reports committed here
 └── config.json                         # Your product config
 ```
 
-Each data source is an independent MCP server. The `agent.ts` starts them all, collects their tools, and passes everything to Claude. Claude decides what to fetch, what to correlate, and what to file.
+The coordinator starts all 5 MCP servers, then spawns 4 data-collector subagents in parallel via `Promise.all()`. Each subagent receives only its own server's tools — no cross-contamination. Findings are passed as structured JSON to an isolated synthesis subagent, which has no tools and no access to the collectors' conversation history. A reporter subagent then receives only GitHub MCP tools to file Issues and commit the report.
 
 ---
 
@@ -77,7 +85,8 @@ Edit `config.json`:
     "analytics_events_file": "./data/analytics-events.csv"
   },
   "thresholds": {
-    "issue_filing_min_mentions": 3
+    "issue_filing_min_mentions": 3,
+    "confidence_threshold": 5
   },
   "github": {
     "repo": "YOUR_USERNAME/voc-agent",
@@ -127,6 +136,15 @@ theme. Two GitHub Issues filed.
 2. **Performance / Slow load times** — 11 mentions
    - Support tickets: 4 | App Store: 2 | Trustpilot: 2 | Reddit: 3
 
+## Theme Intelligence
+| Theme | Confidence | Sources | Key Evidence |
+|---|---|---|---|
+| Login failures | 9/10 | 4/4 | "Login keeps failing" (Trustpilot), T-1001 (support), login_error +690% (analytics) |
+| Performance / Slow load times | 7/10 | 3/4 | "Pages take 10s to load" (App Store), r/Notion post 89↑ |
+
+## Emerging Signals (confidence < 5 — monitoring only, no Issues filed)
+- Search autocomplete broken — 2/4 sources, 3 mentions
+
 ## Filed GitHub Issues
 - #12: [VoC] Login failures — 18 mentions across 4 sources (P1)
 - #13: [VoC] Performance degradation — 11 mentions across 4 sources (P2)
@@ -149,14 +167,7 @@ Each integration is isolated — you can swap one without touching the others.
 
 ## Running on a Schedule
 
-To run daily automatically, add a cron job:
-
-```bash
-# Run every day at 8am
-0 8 * * * cd /path/to/voc-agent && npm run agent >> logs/agent.log 2>&1
-```
-
-Or use GitHub Actions to run it on a schedule and commit reports automatically.
+A GitHub Actions workflow is already included at `.github/workflows/daily-voc.yml`. It runs every day at 8am UTC, requires `ANTHROPIC_API_KEY` to be added as a repo secret, and commits the daily report automatically. Trigger it manually anytime from the **Actions** tab.
 
 ---
 
