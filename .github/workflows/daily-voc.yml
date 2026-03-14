@@ -1,0 +1,41 @@
+name: Daily VoC Report
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # 8am UTC daily
+  workflow_dispatch: # Manual trigger for testing
+
+permissions:
+  contents: write # GitHub MCP needs this to commit reports
+  issues: write   # GitHub MCP needs this to file Issues
+
+jobs:
+  run-voc-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run VoC Agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # GITHUB_TOKEN is mapped to GITHUB_PERSONAL_ACCESS_TOKEN inside agent.ts
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional — agent falls back to mock data if not set
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          TRUSTPILOT_API_KEY: ${{ secrets.TRUSTPILOT_API_KEY }}
+        run: node dist/agent.js
