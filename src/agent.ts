@@ -243,6 +243,20 @@ Commit the report using the GitHub MCP's file creation/update tool to ${config.g
             block.input as Record<string, unknown>,
             allTools
           );
+
+          // Detect and surface structured errors from MCP servers
+          try {
+            const parsed = JSON.parse(result) as Record<string, unknown>;
+            if (parsed.errorCategory) {
+              console.warn(`  ⚠ Structured error from ${block.name}: [${parsed.errorCategory}] ${parsed.attempted} — ${parsed.suggestedAlternative}`);
+              if ((parsed.partialResults as unknown[])?.length) {
+                console.warn(`     ${(parsed.partialResults as unknown[]).length} partial result(s) included`);
+              }
+            }
+          } catch {
+            // result is not JSON — normal text response, ignore
+          }
+
           toolResults.push({
             type: "tool_result",
             tool_use_id: block.id,

@@ -9,6 +9,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { makeError } from "../../types.js";
 
 const server = new Server(
   { name: "reviews-server", version: "1.0.0" },
@@ -87,14 +88,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       );
 
       if (!response.ok) {
-        // Return mock data if API key not set or rate limited
+        const mock = getMockTrustpilotReviews(company_slug, limit);
+        const category = response.status === 403 ? "permission" : "transient";
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(getMockTrustpilotReviews(company_slug, limit), null, 2),
-            },
-          ],
+          isError: true,
+          content: [{
+            type: "text",
+            text: JSON.stringify(makeError(
+              category,
+              `GET Trustpilot business unit for "${company_slug}" — HTTP ${response.status}`,
+              category === "permission"
+                ? "Set TRUSTPILOT_API_KEY in .env to enable live data"
+                : "Retry later; Trustpilot API may be rate-limiting",
+              mock
+            ), null, 2),
+          }],
         };
       }
 
@@ -128,15 +136,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{ type: "text", text: JSON.stringify(reviews, null, 2) }],
       };
-    } catch {
-      // Return mock data on any error so the agent can still run
+    } catch (err) {
+      const mock = getMockTrustpilotReviews(company_slug, limit);
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(getMockTrustpilotReviews(company_slug, limit), null, 2),
-          },
-        ],
+        isError: true,
+        content: [{
+          type: "text",
+          text: JSON.stringify(makeError(
+            "transient",
+            `fetch Trustpilot reviews for "${company_slug}"`,
+            "Network error — using mock fallback data for demo",
+            mock
+          ), null, 2),
+        }],
       };
     }
   }
@@ -154,13 +166,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const response = await fetch(url);
 
       if (!response.ok) {
+        const mock = getMockAppStoreReviews(limit);
         return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(getMockAppStoreReviews(limit), null, 2),
-            },
-          ],
+          isError: true,
+          content: [{
+            type: "text",
+            text: JSON.stringify(makeError(
+              "transient",
+              `GET App Store RSS for app_id=${app_id} — HTTP ${response.status}`,
+              "Apple RSS feed unavailable; using mock fallback data",
+              mock
+            ), null, 2),
+          }],
         };
       }
 
@@ -188,13 +205,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [{ type: "text", text: JSON.stringify(reviews, null, 2) }],
       };
     } catch {
+      const mock = getMockAppStoreReviews(limit);
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(getMockAppStoreReviews(limit), null, 2),
-          },
-        ],
+        isError: true,
+        content: [{
+          type: "text",
+          text: JSON.stringify(makeError(
+            "transient",
+            `fetch App Store reviews for app_id=${app_id}`,
+            "Network error — using mock fallback data for demo",
+            mock
+          ), null, 2),
+        }],
       };
     }
   }

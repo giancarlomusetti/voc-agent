@@ -10,6 +10,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { parse } from "csv-parse/sync";
+import { makeError } from "../../types.js";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -55,12 +56,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     if (!fs.existsSync(absolutePath)) {
       return {
-        content: [
-          {
-            type: "text",
-            text: `Error: File not found at ${absolutePath}. Make sure data/analytics-events.csv exists.`,
-          },
-        ],
+        isError: true,
+        content: [{
+          type: "text",
+          text: JSON.stringify(makeError(
+            "validation",
+            `read analytics events from ${absolutePath}`,
+            `Create the file at ${absolutePath} — see data/analytics-events.csv in the repo for the expected CSV format`
+          ), null, 2),
+        }],
       };
     }
 

@@ -9,6 +9,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { makeError, StructuredError } from "../../types.js";
 
 const server = new Server(
   { name: "reddit-server", version: "1.0.0" },
@@ -55,16 +56,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       sort?: string;
     };
 
-    const allPosts: Array<{
-      source: string;
-      subreddit: string;
-      title: string;
-      text: string;
-      score: number;
-      num_comments: number;
-      date: string;
-      url: string;
-    }> = [];
+    const allPosts: Array<Record<string, unknown>> = [];
+    const errors: StructuredError[] = [];
 
     for (const subreddit of subreddits) {
       try {
@@ -78,7 +71,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         });
 
         if (!response.ok) {
-          allPosts.push(...getMockRedditPosts(subreddit, limit));
+          const mock = getMockRedditPosts(subreddit, limit);
+          errors.push(makeError(
+            response.status === 403 ? "permission" : "transient",
+            `GET r/${subreddit} — HTTP ${response.status}`,
+            response.status === 403
+              ? "Subreddit may be private or banned"
+              : "Reddit rate limit hit; using mock fallback for this subreddit",
+            mock
+          ));
+          allPosts.push(...mock);
           continue;
         }
 
@@ -110,12 +112,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         allPosts.push(...posts);
       } catch {
-        allPosts.push(...getMockRedditPosts(subreddit, limit));
+        const mock = getMockRedditPosts(subreddit, limit);
+        errors.push(makeError(
+          "transient",
+          `fetch r/${subreddit}`,
+          "Network error — using mock fallback for this subreddit",
+          mock
+        ));
+        allPosts.push(...mock);
       }
     }
 
+    const result: Record<string, unknown> = { posts: allPosts };
+    if (errors.length > 0) result.errors = errors;
+
     return {
-      content: [{ type: "text", text: JSON.stringify(allPosts, null, 2) }],
+      isError: errors.length > 0 && allPosts.length === 0,
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
   }
 
