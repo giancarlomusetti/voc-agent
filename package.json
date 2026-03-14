@@ -1,0 +1,27 @@
+{
+  "name": "voc-agent",
+  "version": "1.0.0",
+  "description": "Voice of Customer agent — aggregates reviews, Reddit, support, and analytics via MCP servers, synthesizes themes with Claude, and files GitHub Issues.",
+  "main": "dist/agent.js",
+  "scripts": {
+    "build": "tsc",
+    "agent": "npm run build && node dist/agent.js",
+    "dev": "ts-node src/agent.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.3",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^17.3.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^6.1.1",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

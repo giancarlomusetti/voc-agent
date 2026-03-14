@@ -1,0 +1,16 @@
+id,date,subject,description,category,priority,status
+T-1001,2026-03-13,Cannot log in to account,I have been unable to log in for 2 days. The login page accepts my credentials but then just redirects me back to the login page. I've tried resetting my password and it still doesn't work.,auth,high,open
+T-1002,2026-03-13,App crashes on startup,Every time I open the mobile app it crashes within 5 seconds. Tried reinstalling but the issue persists. iPhone 15 iOS 17.2,crash,high,open
+T-1003,2026-03-13,Very slow loading times,Pages are taking 15-20 seconds to load. This started about a week ago. My internet connection is fine.,performance,medium,open
+T-1004,2026-03-13,Search not returning correct results,When I search for my notes the results are completely wrong. It finds unrelated notes and misses the ones I'm looking for.,search,medium,open
+T-1005,2026-03-12,Login failure on mobile,Mobile app login is broken. Desktop works fine but mobile just shows an error after entering credentials.,auth,high,open
+T-1006,2026-03-12,Can't access workspace after login,I can log in but then get a blank screen where my workspace should be. Refreshing doesn't help.,auth,high,open
+T-1007,2026-03-12,Extremely slow performance,Everything in the app is sluggish. Typing in notes has noticeable lag. This makes the app almost unusable.,performance,medium,in_progress
+T-1008,2026-03-12,App not loading on Android,Android app just shows a loading spinner and never finishes loading. This started yesterday.,crash,high,open
+T-1009,2026-03-11,Sync not working,My notes aren't syncing between my phone and laptop. Changes made on one device don't appear on the other.,sync,medium,open
+T-1010,2026-03-11,Login keeps kicking me out,I get logged out automatically every few minutes. Have to keep signing back in. Very disruptive.,auth,high,open
+T-1011,2026-03-11,Database/page loading slowly,All my databases take forever to load. Some have a lot of data but they loaded fine before last week.,performance,medium,open
+T-1012,2026-03-11,Search feature broken,Search used to work great. Now it misses obvious matches and returns irrelevant results.,search,medium,open
+T-1013,2026-03-10,Billing issue,I was charged twice for my subscription this month. Please refund the duplicate charge.,billing,high,open
+T-1014,2026-03-10,Integration with Slack not working,The Slack integration stopped posting notifications. Last worked 5 days ago.,integration,low,open
+T-1015,2026-03-10,Can't export to PDF,Trying to export a page to PDF but it just downloads an empty file.,export,low,open

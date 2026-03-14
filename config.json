@@ -1,0 +1,18 @@
+{
+  "target": {
+    "trustpilot_company_slug": "notion",
+    "app_store_app_id": "1045940956",
+    "app_store_country": "us",
+    "reddit_subreddits": ["Notion", "NotionHQ"],
+    "support_tickets_file": "./data/support-tickets.csv",
+    "analytics_events_file": "./data/analytics-events.csv"
+  },
+  "thresholds": {
+    "issue_filing_min_mentions": 3
+  },
+  "github": {
+    "repo": "giancarlomusetti/voc-agent",
+    "report_branch": "main",
+    "report_path": "reports"
+  }
+}
