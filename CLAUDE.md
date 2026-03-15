@@ -9,10 +9,14 @@ npm run build        # Compile TypeScript → dist/
 npm run agent        # Build + run the coordinator (multi-agent, default)
 npm run agent:legacy # Build + run the single-agent fallback (src/agent.ts)
 npm run dev          # Run coordinator with ts-node, no build step
+npm run dev:legacy   # Run single-agent with ts-node, no build step
 npx tsc --noEmit     # Type-check only, no output
 ```
 
-The agent requires `ANTHROPIC_API_KEY` and `GITHUB_TOKEN` in `.env`. Copy `.env.example` to get started.
+There are no tests or lint configs in this project.
+
+**Required env vars** (`.env`): `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`. Copy `.env.example` to get started.
+**Optional** (fall back to mock data if absent): `TRUSTPILOT_API_KEY`. Reddit uses the public `.json` endpoint — no credentials needed, just a `User-Agent` header (already hardcoded).
 
 ## Architecture
 
