@@ -80,12 +80,14 @@ export async function runDataCollector(
       };
     }
 
-    if (response.stop_reason === "tool_use") {
+    const toolUseBlocks = response.content.filter(
+      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+    );
+
+    if (toolUseBlocks.length > 0) {
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
-      for (const block of response.content) {
-        if (block.type !== "tool_use") continue;
-
+      for (const block of toolUseBlocks) {
         try {
           const result = await callTool(
             clients,

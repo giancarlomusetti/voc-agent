@@ -63,7 +63,7 @@ Use the GitHub MCP tools to create issues and commit the file.`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: 8096,
       system: systemPrompt,
       tools: anthropicTools,
       messages,
@@ -79,37 +79,46 @@ Use the GitHub MCP tools to create issues and commit the file.`;
       return;
     }
 
-    if (response.stop_reason === "tool_use") {
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    // Process tool_use blocks based on content, not solely stop_reason.
+    // If stop_reason is "max_tokens" while a tool_use block was being generated,
+    // the block is still present in content and must get a tool_result or the
+    // next API call will 400 with "tool_use ids found without tool_result blocks".
+    const toolUseBlocks = response.content.filter(
+      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+    );
 
-      for (const block of response.content) {
-        if (block.type !== "tool_use") continue;
-
-        console.log(`  → Reporter calling: ${block.name}`);
-
-        try {
-          const result = await callTool(
-            clients,
-            block.name,
-            block.input as Record<string, unknown>,
-            githubTools
-          );
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: result,
-          });
-        } catch (err) {
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: block.id,
-            content: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            is_error: true,
-          });
-        }
-      }
-
-      messages.push({ role: "user", content: toolResults });
+    if (toolUseBlocks.length === 0) {
+      // No tool calls and not end_turn — unexpected stop, exit cleanly
+      return;
     }
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+    for (const block of toolUseBlocks) {
+      console.log(`  → Reporter calling: ${block.name}`);
+
+      try {
+        const result = await callTool(
+          clients,
+          block.name,
+          block.input as Record<string, unknown>,
+          githubTools
+        );
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: result,
+        });
+      } catch (err) {
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          is_error: true,
+        });
+      }
+    }
+
+    messages.push({ role: "user", content: toolResults });
   }
 }
